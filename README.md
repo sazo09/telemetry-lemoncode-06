@@ -13,3 +13,10 @@ rate(process_cpu_seconds_total{job="prometheus"}[1m])
 ```
 ![alt text](image.png)
 ![alt text](image-1.png)
+
+
+#  ejercicio 5
+![alt text](image-4.png)
+![alt text](image-2.png)
+![alt text](image-3.png)
+

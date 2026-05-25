@@ -1,0 +1,15 @@
+FROM python:3.14
+
+WORKDIR /app
+
+COPY ./app_map/requirements.txt ./requirements.txt
+
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+COPY ./app_map/main.py .
+COPY ./app_map/__init__.py .
+COPY ./app_map/api ./api
+COPY ./app_map/api ./schemas
+COPY ./app_frontend/dist ./statics
+
+CMD ["fastapi", "run", "main.py", "--port", "4000"]

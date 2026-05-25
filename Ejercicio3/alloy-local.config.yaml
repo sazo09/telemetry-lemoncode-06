@@ -1,0 +1,32 @@
+# Se conecta a docker para identificar que contenedor se esta ejecutando en el host y refresca cada 5 segundos, luego se reetiqueta el nombre del contenedor y se envia a loki.write.default.receiver
+
+discovery.docker "flog_scrape" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "5s"
+}
+# Limmpia los metadatos que genera docker y solo deja el nombre del contenedor, luego se reetiqueta con el nombre del contenedor y se envia a loki.write.default.receiver
+discovery.relabel "flog_scrape" {
+	targets = []
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+}
+# Toma la lista de targets que genera discovery.docker "flog_scrape" y se las envia a loki.write.default.receiver, ademas se reetiqueta con el nombre del contenedor para que loki pueda identificar de que contenedor proviene cada log, se refresca cada 5 segundos para identificar nuevos contenedores o contenedores que se detuvieron y eliminar sus logs de la lista de targets.
+loki.source.docker "flog_scrape" {
+	host             = "unix:///var/run/docker.sock"
+	targets          = discovery.docker.flog_scrape.targets
+	forward_to       = [loki.write.default.receiver]
+	relabel_rules    = discovery.relabel.flog_scrape.rules
+	refresh_interval = "5s"
+}
+# Define la URL del servidor Loki donde se guardaran los logs
+loki.write "default" {
+	endpoint {
+		url       = "http://gateway:3100/loki/api/v1/push"
+		tenant_id = "tenant1"
+	}
+	external_labels = {}
+}

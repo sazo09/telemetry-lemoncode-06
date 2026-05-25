@@ -11,6 +11,7 @@ class TestKpiRepositoryInMemory:
         """
         Setup a temporary Parquet file and DuckDB connection.
         """
+        # 1. Create dummy data that matches the Kpi dataclass fields
         data = {
             'timestamp': ['2026-04-04 10:00:00', '2026-04-04 11:00:00', '2026-04-04 12:00:00'],
             'date': ['2026-04-04', '2026-04-04', '2026-04-04'],
@@ -20,12 +21,15 @@ class TestKpiRepositoryInMemory:
             'unique_users': [50, 60, 55]
         }
         df = pd.DataFrame(data)
-
+        
+        # 2. Save to a temporary local Parquet file
         self.temp_parquet = str(tmp_path / "test_data.parquet")
         df.to_parquet(self.temp_parquet)
-
+        
+        # 3. Initialize DuckDB in-memory
         self.con = duckdb.connect(database=':memory:')
-
+        
+        # 4. Initialize Repository with the local path
         self.repo = KpiRepositoryInMemory(db_cursor=self.con, data_path=self.temp_parquet)
         yield
 
@@ -35,7 +39,8 @@ class TestKpiRepositoryInMemory:
         
         assert len(results) == 1
         kpi = results[0]
-
+        
+        # Verify the object type and specific attributes
         assert isinstance(kpi, Kpi)
         assert kpi.service_name == 'auth-service'
         assert kpi.requests_per_minute == 150
@@ -43,9 +48,11 @@ class TestKpiRepositoryInMemory:
 
     def test_get_kpis_pagination_logic(self):
         """Verify that OFFSET and LIMIT work correctly across pages."""
+        # Page 2, Size 1 should return the second record (ordered by date)
         results = self.repo.get_kpis(page=2, size=1)
         
         assert len(results) == 1
+        # Based on our data setup, second item has hour 11
         assert results[0].hour == 11
         assert results[0].service_name == 'payment-service'
 
@@ -57,7 +64,7 @@ class TestKpiRepositoryInMemory:
     def test_get_kpis_handles_all_columns(self):
         """Verify that all fields in the dataclass are populated."""
         results = self.repo.get_kpis(page=1, size=3)
-        kpi = results[-1]
+        kpi = results[-1] # The last item (hour 12)
         
         assert kpi.timestamp == '2026-04-04 12:00:00'
         assert kpi.unique_users == 55
